@@ -1,0 +1,45 @@
+---
+title: "group5_FIHTD_HW1"
+author: "Caden McQuillen, Yuchen Sun, Xiang (Jennie) Li"
+date: '2023-02-12'
+output:
+  html_document:
+    toc: yes
+---
+
+## Data Preprocessing
+
+Load Data
+```{r}
+load("/Users/Caden/Downloads/1 - Metabolomics/Simulated_metabolomics_data.RData")
+```
+Create boxplots
+```{r}
+#log data, transpose matrix and covert to dataframe for boxplot function
+logged_dat <-data.frame(t(log(dat)))
+#rename colnames as 1-906
+colnames(logged_dat)<-seq(1:906)
+#create boxplot, dont plot outliers
+samples_boxplot <-boxplot(logged_dat, xlab = "Sample", ylab = "log(concentration)" , outline = FALSE)
+
+
+```
+
+
+Quotient Normalization
+```{r}
+library(Rcpm)
+#quotient normalization using Dieterle, F., Ross, A., Schlotterbeck, G. & Senn, H. Probabilistic Quotient Normalization as Robust Method to Account for Dilution of Complex Biological Mixtures. Application in H1 NMR Metabonomics. Anal. Chem. 78, 4281-4290 (2006).
+normalized_dat <-pqn(dat,QC=NULL)
+
+#log data, transpose matrix and covert to dataframe for boxplot function
+norm_logged_dat <-data.frame(t(log(normalized_dat)))
+#rename colnames as 1-906
+colnames(norm_logged_dat)<-seq(1:906)
+#create boxplot, dont plot outliers 
+norm_samples_boxplot <-boxplot(norm_logged_dat, xlab = "Sample", ylab = "log(concentration)" , outline = FALSE)
+
+
+
+```
+
