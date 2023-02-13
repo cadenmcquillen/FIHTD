@@ -80,7 +80,7 @@ sig_male_after = length(which(de_adj$diffexp == "High in Male"))
 #create dataframe for barplot
 counts <- c(sig_female_before,sig_male_before, sig_female_after, sig_male_after)
 group <- c("Sig_Female_Before", "Sig_Male_Before", "Sig_Female_After", "Sig_Male_After")
-barplot_df <- data.frame(group,numSignifant )
+barplot_df <- data.frame(group,counts )
 
 #barplot
 ggplot(data=barplot_df, aes(x=group, y=counts)) +
