@@ -3,7 +3,6 @@
 ### Contents
 
 - `group5_FIHTD_HW1.Rmd`: RMarkdown file with codes and answers
-- `group5_FIHTD_HW1.html`: HTML file Knit from RMarkdown
 - `script.R`: R codes only
 
 ### Required Packages
