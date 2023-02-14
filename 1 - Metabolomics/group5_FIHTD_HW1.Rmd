@@ -155,7 +155,7 @@ ggplot(data=barplot_df, aes(x=group, y=counts)) +
 
 
 
-### 2.3 Gender association & pathway enrichment 
+### 2.3 Gender association & pathways 
 
 #### Order by p.adj
 ```{r}
@@ -168,69 +168,28 @@ head(de_ordered)
 ```{r}
 # get top DE metab
 top.male.met <- as.data.frame(de_ordered) %>% dplyr::filter(log2FoldChange > 0) %>% 
-    pull('name') %>% head(10)
+    pull('name') %>% head(5)
 top.female.met <- as.data.frame(de_ordered) %>% dplyr::filter(log2FoldChange < 0) %>% 
-    pull('name') %>% head(10)
+    pull('name') %>% head(5)
 
 top.male.met
 top.female.met
 ```
-Most significantly associated with male: "M18369" "M37190" "M43488" "M32672" "M34456"
-
-Most significantly associated with female: "M32418" "M33447" "M33968" "M27718" "M33971"
 
 
-
-<<<<<<< HEAD
-
-
-##### Which pathways do these metabolites belong to? Visualize the differences between male and female for the top hit.
-=======
-#### Which pathways do these metabolites belong to? Visualize the differences between male and female for the top hit.
->>>>>>> origin/main
-
+#### Visualization 
 ```{r}
-print("Top 5 significantly associated with male:")
-for (metab in top.male.met){
-  mateb_info <- annotations[annotations$name == metab,]
-  metab_sub_pathway <- mateb_info$Sub_pathway
-  print(paste(metab, ": ", metab_sub_pathway))
-}
-print('\n')
-print("Top 5 significantly associated with female:")
-for (metab in top.female.met){
-  mateb_info <- annotations[annotations$name == metab,]
-  metab_sub_pathway <- mateb_info$Sub_pathway
-  print(paste(metab, ": ", metab_sub_pathway))
-}
-```
-
-
-```{r}
-
-```
-
-
-
-```{r}
-# extract DE metabolites
-alpha = 0.05
-
-de_metab <- de_ordered %>% 
-  dplyr::filter(p.adj < alpha) %>%  
-  pull("name") 
-
-print(paste(length(de_metab),'DE metabolites selected for pathway enrichment analysis.'))
-print(head(de_metab))
-```
-
-__Question:__ is pathway enrichment the same for genes vs metab?
-```{r}
-# perform KEGG pathway over-representation analysis
-#kegg <- enrichKEGG(gene=de.genes, organism="hsa", keyType="kegg", pAdjustMethod="BH", 
-#                   pvalueCutoff=0.01, qvalueCutoff=0.05)
-
-
+top.metabs <- c(top.male.met, top.female.met)
+sig_metabs_male <- male_metabolites_norm_dat[, top.metabs ]
+sig_metabs_female <- female_metabolites_norm_dat[, top.metabs ]
+#create boxplot, dont plot outliers
+colors = c(rep("red",5),rep("blue",5))
+norm_samples_boxplot <-boxplot(sig_metabs_male, main = "Top 10 Sig Metabolites in Male Samples", ylab = "log(concentration)" , outline = FALSE, show.names=TRUE, las=2, col=colors)
+legend(x = "topright", legend=c("highly associated with male", "highly associated with female"),
+col=c("red", "blue"), lty=c(1, 1), lwd=c(3,3), cex=0.8)
+norm_samples_boxplot <-boxplot(sig_metabs_female, main = "Top 10 Sig Metabolites in Female Samples", ylab = "log(concentration)" , outline = FALSE, show.names=TRUE, las=2, col=colors)
+legend(x = "topright", legend=c("highly associated with male", "highly associated with female"),
+col=c("red", "blue"), lty=c(1, 1), lwd=c(3,3), cex=0.8)
 ```
 
 
@@ -317,7 +276,7 @@ ggplot(data=barplot_df, aes(x=group, y=counts)) +
 ```
 
 
-### 3.3 
+### 3.3 Visualize the network
 This matrix is the adjacency matrix of the underlying Gaussian graphical model. Visualize the network using the igraph package (tip: graph.adjacency function).
 
 ```{r}
