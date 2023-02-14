@@ -211,6 +211,7 @@ alpha = 0.05
 
 #copy DE dataframe 
 dat_pcor_adj <- dat_pcor
+#boneferroni
 num_test <- (((335*335)-335)/2)
 dat_pcor_adj$p.adj <- (dat_pcor_adj$p.value)*num_test
 
@@ -223,6 +224,7 @@ dat_pcor_adj$sig[dat_pcor_adj$p.adj < alpha] <- 'Significant'
 sig_metab = length(which(dat_pcor_adj$sig == "Significant"))
 insig_metab = length(which(dat_pcor_adj$sig == "Not Significant"))
 
+#replace correlation matrix with 0s for not significant entries and along diagonal
 dat_pcor_adj$estimate[dat_pcor_adj$p.adj > 0.05] <- 0
 dat_pcor_adj$estimate[diag(dat_pcor_adj$estimate)] <- 0
 
