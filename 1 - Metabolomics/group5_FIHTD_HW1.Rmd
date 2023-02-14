@@ -11,21 +11,30 @@ output:
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 ```
 
-### Use Packages
+### Load Packages
 
 ```{r}
-library(Rcpm)
+library(Rcpm) # devtools::install_github("ricoderks/Rcpm")
 library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(ppcor) # install.packages("ppcor")
+library(igraph) # install.packages("igraph")
+ 
 ```
 
-## Data Preprocessing
+## 1. Data Preprocessing
 
-### Load data
+### 1.1 Load data
+This is a simulated dataset. Metabolites are in columns and samples are in rows of the `dat` data frame. Annotations of the metabolites can be found in variable `annotations` and information on gender is stored in variable `gender` with 1 = male and 2 = female.
+
 ```{r}
 load("Simulated_metabolomics_data.RData")
 ```
 
-### Create boxplots
+### 1.2 Check data quality
+
+#### Boxplots
 ```{r}
 #log data, transpose matrix and covert to dataframe for boxplot function
 logged_dat <-data.frame(t(log(dat)))
@@ -35,7 +44,10 @@ colnames(logged_dat)<-seq(1:906)
 samples_boxplot <-boxplot(logged_dat, xlab = "Sample", ylab = "log(concentration)" , outline = FALSE)
 ```
 
-### Quotient normalization
+Observation: Sample 50 - 80 have higher concentrations compared to other samples. These samples may happened to contain more cells so the total concentration of metabolites are higher than normal. 
+
+
+### 1.3 Quotient normalization
 ```{r}
 #quotient normalization using Dieterle, F., Ross, A., Schlotterbeck, G. & Senn, H. Probabilistic Quotient Normalization as Robust Method to Account for Dilution of Complex Biological Mixtures. Application in H1 NMR Metabonomics. Anal. Chem. 78, 4281-4290 (2006).
 normalized_dat <-pqn(dat,QC=NULL)
@@ -49,9 +61,9 @@ norm_samples_boxplot <-boxplot(norm_logged_dat, xlab = "Sample", ylab = "log(con
 ```
 
 
-## Phenotype Association
+## 2. Phenotype Association
 
-### Metabolite differences between males and females
+### 2.1 Metabolite differences between males and females (t-test)
 ```{r}
 #get indices of males and females
 males <- which(gender == 1)
@@ -62,8 +74,8 @@ female_metabolites_norm_dat <-normalized_dat[females,]
 #vector to hold p values for each metabolite
 pvals <- c()
 log2fold <- c()
-#for each metabolite, do t test comparing concentation between males and females
-for (i in 1:length(colnames(normalized_dat))){
+#for each metabolite, do t-test comparing concentration between males and females
+for (i in 1:length(colnames(normalized_dat))){ 
   male_sample <- male_metabolites_norm_dat[,i]
   female_sample <- female_metabolites_norm_dat[,i]
   temp <- t.test(male_sample,female_sample)
@@ -72,7 +84,7 @@ for (i in 1:length(colnames(normalized_dat))){
 }
 ```
 
-### Plot p-values
+### 2.2 Plot p-values
 ```{r}
 # create dataframe for volcano plot, contains log2fold change, p-value, metabolites name, and labels for differentially expressed metabolites
 de <- data.frame(log2fold,pvals,annotations$name)
@@ -98,8 +110,12 @@ ggplot(de, aes(x=pvalue)) + geom_histogram(bins=50)
 ggplot(data=de, aes(x=log2FoldChange,y=-log10(pvalue),col=diffexp,label=delabel)) + geom_point() + theme_minimal() + geom_text(check_overlap=T,size=3,vjust=0,nudge_y=0.25)
 ```
 
+Observation: The p-values of the concentration of a small portion of metabolite are significant. Some metabolites have higher concentrations in female while some are higher in male. 
+
 
 ##### Multiple testing correction
+Method: FDR 
+$\alpha$: 0.05
 ```{r}
 #copy DE dataframe and keep only metabolite name, logFC, p value
 de_adj <-de
@@ -129,7 +145,119 @@ barplot_df <- data.frame(group,counts )
 
 #barplot
 ggplot(data=barplot_df, aes(x=group, y=counts)) +
-  geom_bar(stat="identity") + scale_x_discrete(limits=c("Sig_Female_Before","Sig_Female_After","Sig_Male_Before", "Sig_Male_After"))
+  geom_bar(stat="identity") +
+    geom_text(aes(label = counts), vjust = 1.5, colour = "white")
+  scale_x_discrete(limits=c("Sig_Female_Before","Sig_Female_After","Sig_Male_Before", "Sig_Male_After"))
+```
+
+113 metabolites are significantly associated with female before multiple testing correction and 103 after. 
+89 metabolites are significantly associated with male before multiple testing correction and 83 after. 
+
+
+
+### 2.3 Gender association & pathway enrichment 
+
+##### order by p.adj
+```{r}
+# order metabolites by adjusted p-values
+de_ordered <- de_adj[order(de_adj$p.adj),]
+head(de_ordered)
+```
+
+##### metabolites associated with gender
+```{r}
+# get top DE metab
+top.male.met <- as.data.frame(de_ordered) %>% dplyr::filter(log2FoldChange > 0) %>% 
+    pull('name') %>% head(10)
+top.female.met <- as.data.frame(de_ordered) %>% dplyr::filter(log2FoldChange < 0) %>% 
+    pull('name') %>% head(10)
+
+top.male.met
+top.female.met
+```
+Most significantly associated with male: "M18369" "M37190" "M43488" "M32672" "M34456"
+Most significantly associated with female: "M32418" "M33447" "M33968" "M27718" "M33971"
+
+
+
+##### Which pathways do these metabolites belong to? Visualize the differences between male and female for the top hit.
+
+```{r}
+# extract DE metabolites
+alpha = 0.05
+
+de_metab <- de_ordered %>% 
+  dplyr::filter(p.adj < alpha) %>%  
+  pull("name") 
+
+print(paste(length(de_metab),'DE metabolites selected for pathway enrichment analysis.'))
+print(head(de_metab))
+```
+
+__Question:__ is pathway enrichment the same for genes vs metab?
+```{r}
+# perform KEGG pathway over-representation analysis
+#kegg <- enrichKEGG(gene=de.genes, organism="hsa", keyType="kegg", pAdjustMethod="BH", 
+#                   pvalueCutoff=0.01, qvalueCutoff=0.05)
+```
+
+
+
+## 3. Gaussian graphical model (GGM)
+ 
+### 3.1 Calculate partial correlations
+
+```{r}
+#use the ppcor package
+dat_pcor <- pcor(dat)
+```
+
+
+### 3.2 Multiple testing correction
+
+When calculating the number of tests, remember that a correlation matrix is symmetric and the diagonal does not count (calculate how many values there are in a correlation matrix). Set all insignificant values and the in the partial correlation matrix to zero.
+
+Method: Bonferroni 
+$\alpha$: 0.05
+```{r}
+alpha = 0.05 
+#copy DE dataframe 
+dat_pcor_adj <- dat_pcor
+
+#add adjusted p value using bonferroni
+dat_pcor_adj$p.adj <-p.adjust(dat_pcor_adj$p.value, method = "bonferroni")
+
+# label significant and insignificant values 
+dat_pcor_adj$sig <- NA
+dat_pcor_adj$sig[de_adj$p.adj<alpha] <- 'Significant'
+
+#count significant metabolites
+sig_metab = length(which(dat_pcor_adj$sig == "Significant"))
+insig_metab = length(which(dat_pcor_adj$sig == "NA"))
+```
+
+
+```{r}
+#create dataframe for barplot
+counts <- c(sig_metab, insig_metab)
+group <- c("Sig", "Insig")
+barplot_df <- data.frame(group,counts)
+
+#barplot
+ggplot(data=barplot_df, aes(x=group, y=counts)) +
+  geom_bar(stat="identity") +
+    geom_text(aes(label = counts), vjust = 1.5, colour = "white") +
+  scale_x_discrete(limits=c("Sig", "Insig"))
+```
+
+
+### 3.3 
+This matrix is the adjacency matrix of the underlying Gaussian graphical model. Visualize the network using the igraph package (tip: graph.adjacency function).
+
+```{r}
+#adjm1<-as.matrix(xxx)
+#g1<-graph.adjacency(adjm1); 
+#plot(g1)
 ```
 
 
