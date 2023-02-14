@@ -146,7 +146,7 @@ barplot_df <- data.frame(group,counts )
 #barplot
 ggplot(data=barplot_df, aes(x=group, y=counts)) +
   geom_bar(stat="identity") +
-    geom_text(aes(label = counts), vjust = 1.5, colour = "white")
+    geom_text(aes(label = counts), vjust = 1.5, colour = "white") +
   scale_x_discrete(limits=c("Sig_Female_Before","Sig_Female_After","Sig_Male_Before", "Sig_Male_After"))
 ```
 
