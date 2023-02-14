@@ -211,46 +211,22 @@ alpha = 0.05
 
 #copy DE dataframe 
 dat_pcor_adj <- dat_pcor
+num_test <- (((335*335)-335)/2)
+dat_pcor_adj$p.adj <- (dat_pcor_adj$p.value)*num_test
 
-
-#add adjusted p value using bonferroni
-
-#get upper triangular matrix of correlation matrix p values
-indices_to_keep <- upper.tri(dat_pcor_adj$p.value)
-#subset matrix to only upper triangular matrix
-dat_pcor_adj$p.value <- dat_pcor_adj$p.value[indices_to_keep]
-#adjust p values using bonferroni, n = length(dat_pcor_adj$p.value) = ((335*335)-335)/2 aka upper triangular matrix of 335x335 
-dat_pcor_adj$p.adj <- p.adjust(dat_pcor_adj$p.value, method = "bonferroni") 
-
-
-#label significant and insignificant values 
-dat_pcor_adj$sig <- c(dat_pcor_adj$p.adj)
-dat_pcor_adj$sig[de_adj$p.adj > alpha] <- "Not Significant"
-dat_pcor_adj$sig[de_adj$p.adj < alpha] <- 'Significant'
+#label significant and insignificant values
+dat_pcor_adj$sig <- vector(length = length(dat_pcor_adj$p.adj))
+dat_pcor_adj$sig[dat_pcor_adj$p.adj > alpha] <- 'Not Significant'
+dat_pcor_adj$sig[dat_pcor_adj$p.adj < alpha] <- 'Significant'
 
 #count significant metabolites
 sig_metab = length(which(dat_pcor_adj$sig == "Significant"))
 insig_metab = length(which(dat_pcor_adj$sig == "Not Significant"))
 
+dat_pcor_adj$estimate[dat_pcor_adj$p.adj > 0.05] <- 0
+dat_pcor_adj$estimate[diag(dat_pcor_adj$estimate)] <- 0
 
 
-#convert entries in correlation matrix that are insignificant to 0
-for(i in 1:335){
-  for(j in 1:335){
-    if(i*j > length(dat_pcor_adj$sig)){
-      break
-    }
-    if(i == j ){
-      dat_pcor_adj$estimate[i,j] <-0
-    }
-    else{
-      if(dat_pcor_adj$sig[i*j] == "Not Significant"){
-         dat_pcor_adj$estimate[i,j] <-0
-          dat_pcor_adj$estimate[j,i] <-0
-      }
-    }
-  }
-}
 ```
 
 
@@ -273,7 +249,6 @@ This matrix is the adjacency matrix of the underlying Gaussian graphical model. 
 
 ```{r}
 g <- simplify(graph.adjacency(dat_pcor_adj$estimate,mode="undirected",weighted=T,diag=F))
-g <- delete.edges(g,E(g)[abs(weight)<0.2])
 g <- delete.vertices(g,degree(g)==0)
 plot.igraph(g,vertex.size=degree(g)+2,vertex.label=NA,edge.width=abs(E(g)$weight),layout=layout.auto(g))
 ```
