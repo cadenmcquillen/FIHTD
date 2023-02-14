@@ -98,13 +98,13 @@ de$delabel <- NA
 de$delabel[de$diffexp!='No Diff' & abs(de$log2FoldChange)>1] <- de$name[de$diffexp!='No Diff' & abs(de$log2FoldChange)>1]
 ```
 
-##### Histogram
+#### Histogram
 ```{r}
 # create histogram
 ggplot(de, aes(x=pvalue)) + geom_histogram(bins=50)
 ```
 
-##### Volcano Plots
+#### Volcano Plots
 ```{r}
 # create volcano plot
 ggplot(data=de, aes(x=log2FoldChange,y=-log10(pvalue),col=diffexp,label=delabel)) + geom_point() + theme_minimal() + geom_text(check_overlap=T,size=3,vjust=0,nudge_y=0.25)
@@ -113,7 +113,7 @@ ggplot(data=de, aes(x=log2FoldChange,y=-log10(pvalue),col=diffexp,label=delabel)
 Observation: The p-values of the concentration of a small portion of metabolite are significant. Some metabolites have higher concentrations in female while some are higher in male. 
 
 
-##### Multiple testing correction
+#### Multiple testing correction
 Method: FDR 
 $\alpha$: 0.05
 ```{r}
@@ -146,7 +146,7 @@ barplot_df <- data.frame(group,counts )
 #barplot
 ggplot(data=barplot_df, aes(x=group, y=counts)) +
   geom_bar(stat="identity") +
-    geom_text(aes(label = counts), vjust = 1.5, colour = "white")
+    geom_text(aes(label = counts), vjust = 1.5, colour = "white") +
   scale_x_discrete(limits=c("Sig_Female_Before","Sig_Female_After","Sig_Male_Before", "Sig_Male_After"))
 ```
 
@@ -157,14 +157,14 @@ ggplot(data=barplot_df, aes(x=group, y=counts)) +
 
 ### 2.3 Gender association & pathway enrichment 
 
-##### order by p.adj
+#### Order by p.adj
 ```{r}
 # order metabolites by adjusted p-values
 de_ordered <- de_adj[order(de_adj$p.adj),]
 head(de_ordered)
 ```
 
-##### metabolites associated with gender
+#### Metabolites associated with gender
 ```{r}
 # get top DE metab
 top.male.met <- as.data.frame(de_ordered) %>% dplyr::filter(log2FoldChange > 0) %>% 
@@ -176,13 +176,18 @@ top.male.met
 top.female.met
 ```
 Most significantly associated with male: "M18369" "M37190" "M43488" "M32672" "M34456"
+
 Most significantly associated with female: "M32418" "M33447" "M33968" "M27718" "M33971"
 
 
 
+<<<<<<< HEAD
 
 
 ##### Which pathways do these metabolites belong to? Visualize the differences between male and female for the top hit.
+=======
+#### Which pathways do these metabolites belong to? Visualize the differences between male and female for the top hit.
+>>>>>>> origin/main
 
 ```{r}
 print("Top 5 significantly associated with male:")
@@ -235,8 +240,8 @@ __Question:__ is pathway enrichment the same for genes vs metab?
 ### 3.1 Calculate partial correlations
 
 ```{r}
-#use the ppcor package
-dat_pcor <- pcor(dat)
+#use the ppcor package on normalized matrix
+dat_pcor <- pcor(normalized_dat)
 ```
 
 
@@ -248,19 +253,53 @@ Method: Bonferroni
 $\alpha$: 0.05
 ```{r}
 alpha = 0.05 
+
 #copy DE dataframe 
 dat_pcor_adj <- dat_pcor
 
-#add adjusted p value using bonferroni
-dat_pcor_adj$p.adj <-p.adjust(dat_pcor_adj$p.value, method = "bonferroni")
 
-# label significant and insignificant values 
-dat_pcor_adj$sig <- NA
-dat_pcor_adj$sig[de_adj$p.adj<alpha] <- 'Significant'
+#add adjusted p value using bonferroni
+
+#get upper triangular matrix of correlation matrix p values
+indices_to_keep <- upper.tri(dat_pcor_adj$p.value)
+#subset matrix to only upper triangular matrix
+dat_pcor_adj$p.value <- dat_pcor_adj$p.value[indices_to_keep]
+#adjust p values using bonferroni, n = length(dat_pcor_adj$p.value) = ((335*335)-335)/2 aka upper triangular matrix of 335x335 
+dat_pcor_adj$p.adj <- p.adjust(dat_pcor_adj$p.value, method = "bonferroni") 
+
+
+#label significant and insignificant values 
+dat_pcor_adj$sig <- c(dat_pcor_adj$p.adj)
+dat_pcor_adj$sig[de_adj$p.adj > alpha] <- "Not Significant"
+dat_pcor_adj$sig[de_adj$p.adj < alpha] <- 'Significant'
 
 #count significant metabolites
 sig_metab = length(which(dat_pcor_adj$sig == "Significant"))
-insig_metab = length(which(dat_pcor_adj$sig == "NA"))
+insig_metab = length(which(dat_pcor_adj$sig == "Not Significant"))
+
+
+
+#convert entries in correlation matrix that are insignificant to 0
+for(i in 1:335){
+  for(j in 1:335){
+    if(i*j > length(dat_pcor_adj$sig)){
+      break
+    }
+    if(i == j ){
+      dat_pcor_adj$estimate[i,j] <-0
+    }
+    else{
+      if(dat_pcor_adj$sig[i*j] == "Not Significant"){
+         dat_pcor_adj$estimate[i,j] <-0
+          dat_pcor_adj$estimate[j,i] <-0
+      }
+    }
+  }
+}
+
+
+
+
 ```
 
 
