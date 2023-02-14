@@ -180,7 +180,32 @@ Most significantly associated with female: "M32418" "M33447" "M33968" "M27718" "
 
 
 
+
+
 ##### Which pathways do these metabolites belong to? Visualize the differences between male and female for the top hit.
+
+```{r}
+print("Top 5 significantly associated with male:")
+for (metab in top.male.met){
+  mateb_info <- annotations[annotations$name == metab,]
+  metab_sub_pathway <- mateb_info$Sub_pathway
+  print(paste(metab, ": ", metab_sub_pathway))
+}
+print('\n')
+print("Top 5 significantly associated with female:")
+for (metab in top.female.met){
+  mateb_info <- annotations[annotations$name == metab,]
+  metab_sub_pathway <- mateb_info$Sub_pathway
+  print(paste(metab, ": ", metab_sub_pathway))
+}
+```
+
+
+```{r}
+
+```
+
+
 
 ```{r}
 # extract DE metabolites
@@ -199,6 +224,8 @@ __Question:__ is pathway enrichment the same for genes vs metab?
 # perform KEGG pathway over-representation analysis
 #kegg <- enrichKEGG(gene=de.genes, organism="hsa", keyType="kegg", pAdjustMethod="BH", 
 #                   pvalueCutoff=0.01, qvalueCutoff=0.05)
+
+
 ```
 
 
