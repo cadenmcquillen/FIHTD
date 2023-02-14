@@ -184,12 +184,8 @@ sig_metabs_male <- male_metabolites_norm_dat[, top.metabs ]
 sig_metabs_female <- female_metabolites_norm_dat[, top.metabs ]
 #create boxplot, dont plot outliers
 colors = c(rep("red",5),rep("blue",5))
-norm_samples_boxplot <-boxplot(sig_metabs_male, main = "Top 10 Sig Metabolites in Male Samples", ylab = "log(concentration)" , outline = FALSE, show.names=TRUE, las=2, col=colors)
-legend(x = "topright", legend=c("highly associated with male", "highly associated with female"),
-col=c("red", "blue"), lty=c(1, 1), lwd=c(3,3), cex=0.8)
-norm_samples_boxplot <-boxplot(sig_metabs_female, main = "Top 10 Sig Metabolites in Female Samples", ylab = "log(concentration)" , outline = FALSE, show.names=TRUE, las=2, col=colors)
-legend(x = "topright", legend=c("highly associated with male", "highly associated with female"),
-col=c("red", "blue"), lty=c(1, 1), lwd=c(3,3), cex=0.8)
+norm_samples_boxplot <-boxplot(sig_metabs_male, main = "Top 10 Sig Metabolites in Male Samples", ylab = "log(concentration)" , outline = FALSE, show.names=TRUE, las=2)
+norm_samples_boxplot <-boxplot(sig_metabs_female, main = "Top 10 Sig Metabolites in Female Samples", ylab = "log(concentration)" , outline = FALSE, show.names=TRUE, las=2)
 ```
 
 
@@ -255,10 +251,6 @@ for(i in 1:335){
     }
   }
 }
-
-
-
-
 ```
 
 
@@ -280,9 +272,10 @@ ggplot(data=barplot_df, aes(x=group, y=counts)) +
 This matrix is the adjacency matrix of the underlying Gaussian graphical model. Visualize the network using the igraph package (tip: graph.adjacency function).
 
 ```{r}
-#adjm1<-as.matrix(xxx)
-#g1<-graph.adjacency(adjm1); 
-#plot(g1)
+g <- simplify(graph.adjacency(dat_pcor_adj$estimate,mode="undirected",weighted=T,diag=F))
+g <- delete.edges(g,E(g)[abs(weight)<0.2])
+g <- delete.vertices(g,degree(g)==0)
+plot.igraph(g,vertex.size=degree(g)+2,vertex.label=NA,edge.width=abs(E(g)$weight),layout=layout.auto(g))
 ```
 
 

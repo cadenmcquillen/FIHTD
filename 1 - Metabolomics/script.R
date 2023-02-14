@@ -1,8 +1,12 @@
 # change working directory
 setwd("C:/Yuchen/WCM/Courses/2023Spring/CMPB5005/homework/FIHTD/1 - Metabolomics/")
 load("Simulated_metabolomics_data.RData")
-library(Rcpm)
+library(Rcpm) # devtools::install_github("ricoderks/Rcpm")
 library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(ppcor) # install.packages("ppcor")
+library(igraph) # install.packages("igraph")
 
 #log data, transpose matrix and covert to dataframe for boxplot function
 logged_dat <-data.frame(t(log(dat)))
@@ -85,3 +89,59 @@ barplot_df <- data.frame(group,counts )
 #barplot
 ggplot(data=barplot_df, aes(x=group, y=counts)) +
   geom_bar(stat="identity") + scale_x_discrete(limits=c("Sig_Female_Before","Sig_Female_After","Sig_Male_Before", "Sig_Male_After"))
+
+
+
+dat_pcor <- pcor(normalized_dat)
+
+alpha = 0.05 
+
+#copy DE dataframe 
+dat_pcor_adj <- dat_pcor
+
+
+#add adjusted p value using bonferroni
+
+#get upper triangular matrix of correlation matrix p values
+indices_to_keep <- upper.tri(dat_pcor_adj$p.value)
+#subset matrix to only upper triangular matrix
+dat_pcor_adj$p.value <- dat_pcor_adj$p.value[indices_to_keep]
+#adjust p values using bonferroni, n = length(dat_pcor_adj$p.value) = ((335*335)-335)/2 aka upper triangular matrix of 335x335 
+dat_pcor_adj$p.adj <- p.adjust(dat_pcor_adj$p.value, method = "bonferroni") 
+
+
+#label significant and insignificant values 
+dat_pcor_adj$sig <- c(dat_pcor_adj$p.adj)
+dat_pcor_adj$sig[de_adj$p.adj > alpha] <- "Not Significant"
+dat_pcor_adj$sig[de_adj$p.adj < alpha] <- 'Significant'
+
+#count significant metabolites
+sig_metab = length(which(dat_pcor_adj$sig == "Significant"))
+insig_metab = length(which(dat_pcor_adj$sig == "Not Significant"))
+
+
+
+#convert entries in correlation matrix that are insignificant to 0
+for(i in 1:335){
+  for(j in 1:335){
+    if(i*j > length(dat_pcor_adj$sig)){
+      break
+    }
+    if(i == j ){
+      dat_pcor_adj$estimate[i,j] <-0
+    }
+    else{
+      if(dat_pcor_adj$sig[i*j] == "Not Significant"){
+        dat_pcor_adj$estimate[i,j] <-0
+        dat_pcor_adj$estimate[j,i] <-0
+      }
+    }
+  }
+}
+
+
+
+g <- simplify(graph.adjacency(dat_pcor_adj$estimate,mode="undirected",weighted=T,diag=F))
+g <- delete.edges(g,E(g)[abs(weight)<0.2])
+g <- delete.vertices(g,degree(g)==0)
+plot.igraph(g,vertex.size=degree(g)+2,vertex.label=NA,edge.width=abs(E(g)$weight),layout=layout.auto(g))
