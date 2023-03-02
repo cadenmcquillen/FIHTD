@@ -62,7 +62,7 @@ p <- 0.05/num_tests
 #Number of permutations needed for target p value
 num_permutations <- 10*(1/p)
 
-diff_exp <- safe(X.mat = gene_expression_matrix, y.vec = activation_status, C.mat = t(Genes_Pathway_Matrix),  Pi.mat = num_permutations)
+diff_exp <- safe(X.mat = gene_expression_matrix, y.vec = activation_status, C.mat = t(Genes_Pathway_Matrix),  Pi.mat = num_permutations, error = "FWER.Bonf")
 
 #top 10
 top10 <- safe.toptable(diff_exp,number = 10, pretty = TRUE, description = FALSE)
