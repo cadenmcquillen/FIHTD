@@ -10,7 +10,9 @@ output:
 
 ##Libraries
 ```{r}
+BiocManager::install("safe")
 library(tidyverse)
+library(safe)
 ```
 
 ## Enrichment Analysis
@@ -18,7 +20,6 @@ library(tidyverse)
 ### Load expression data
 ```{r}
 data <- load("geod33272.rda")
-
 ```
 ### KEGG pathways
 ```{r}
@@ -33,26 +34,46 @@ print(paste0("The total number of genes in TCA cycle pathway: " , num_TCA_cycle_
 
 ### Gene X Pathway matrix
 ```{r}
-#vectorize kegg pathways into 1 vector
-vectorized_kegg <- unlist(kegg)
-#Get unique genes of all pathways
-unique_genes <- unique(vectorized_kegg)
-
-#Get gene names of every gene in any pathway
-Entrez_names <- subset(geod33272$ID, geod33272$ID$entrezID %in% unique_genes)
-
 #create Gene by Pathway matrix (Genes are columns, Pathway are rows)
-Genes_Pathway_Matrix <- matrix(nrow = length(kegg), ncol = length(Entrez_names$agilentID))
-colnames(Genes_Pathway_Matrix) <- Entrez_names$agilentID
+Genes_Pathway_Matrix <- matrix(nrow = length(kegg), ncol = length(geod33272$ID$entrezID))
+colnames(Genes_Pathway_Matrix) <- geod33272$ID$entrezID
 rownames(Genes_Pathway_Matrix) <- names(kegg)
 
 for (i in 1:length(kegg)){
   currentPathway <- unlist(kegg[i])
-  genes <- Entrez_names[Entrez_names$entrezID  %in%  currentPathway,]
-  Genes_Pathway_Matrix[i,]  <- colnames(Genes_Pathway_Matrix) %in% genes$agilentID
+  genes <- geod33272$ID$entrezID  %in%  currentPathway
+  Genes_Pathway_Matrix[i,]  <- genes
 }
-
-
 
 ```
 
+### Safe
+```{r, eval = FALSE}
+#log2 gene expression matrix
+gene_expression_matrix <- log2(geod33272$x)
+rownames(gene_expression_matrix) <- geod33272$ID$entrezID
+#activation status vector
+activation_status <- geod33272$status
+
+#Number of tests
+num_tests<- length(gene_expression_matrix[,1])
+#Target p value
+p <- 0.05/num_tests
+#Number of permutations needed for target p value
+num_permutations <- 10*(1/p)
+
+diff_exp <- safe(X.mat = gene_expression_matrix, y.vec = activation_status, C.mat = t(Genes_Pathway_Matrix),  Pi.mat = num_permutations)
+
+#top 10
+top10 <- safe.toptable(diff_exp,number = 10, pretty = TRUE, description = FALSE)
+print(top10)
+
+#plot
+safeplot(safe=diff_exp,  cat.name = "hsa03440 Homologous recombination")
+
+#Takes forever to run safe, so just load the results instead of rerunning 
+save(gene_expression_matrix, activation_status, num_tests, p, num_permutations, diff_exp, top10, file = "Safe.Rdata")
+```
+
+
+## Aggeratation Based Methods
