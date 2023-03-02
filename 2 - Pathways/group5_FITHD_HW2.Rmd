@@ -7,26 +7,52 @@ output:
     toc: yes
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
+##Libraries
+```{r}
+library(tidyverse)
 ```
 
-## R Markdown
+## Enrichment Analysis
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+### Load expression data
+```{r}
+data <- load("geod33272.rda")
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```
+### KEGG pathways
+```{r}
+num_kegg_pathways <- length(kegg)
+print(paste0("The total number of pathways: ", num_kegg_pathways))
 
-```{r cars}
-summary(cars)
+TCA_cycle_genes <- kegg$`hsa00020 Citrate cycle (TCA cycle)`
+num_TCA_cycle_genes <- length(TCA_cycle_genes)
+
+print(paste0("The total number of genes in TCA cycle pathway: " , num_TCA_cycle_genes))
 ```
 
-## Including Plots
+### Gene X Pathway matrix
+```{r}
+#vectorize kegg pathways into 1 vector
+vectorized_kegg <- unlist(kegg)
+#Get unique genes of all pathways
+unique_genes <- unique(vectorized_kegg)
 
-You can also embed plots, for example:
+#Get gene names of every gene in any pathway
+Entrez_names <- subset(geod33272$ID, geod33272$ID$entrezID %in% unique_genes)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+#create Gene by Pathway matrix (Genes are columns, Pathway are rows)
+Genes_Pathway_Matrix <- matrix(nrow = length(kegg), ncol = length(Entrez_names$agilentID))
+colnames(Genes_Pathway_Matrix) <- Entrez_names$agilentID
+rownames(Genes_Pathway_Matrix) <- names(kegg)
+
+for (i in 1:length(kegg)){
+  currentPathway <- unlist(kegg[i])
+  genes <- Entrez_names[Entrez_names$entrezID  %in%  currentPathway,]
+  Genes_Pathway_Matrix[i,]  <- colnames(Genes_Pathway_Matrix) %in% genes$agilentID
+}
+
+
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
