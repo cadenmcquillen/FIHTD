@@ -8,14 +8,14 @@ output:
 ---
 
 
-##Libraries
-```{r}
+## Libraries
+```{r message=FALSE}
 BiocManager::install("safe")
 library(tidyverse)
 library(safe)
 ```
 
-## Enrichment Analysis
+## 1. Enrichment Analysis
 
 ### Load expression data
 ```{r}
@@ -34,7 +34,7 @@ print(paste0("The total number of genes in TCA cycle pathway: " , num_TCA_cycle_
 
 ### Gene X Pathway matrix
 ```{r}
-#create Gene by Pathway matrix (Genes are columns, Pathway are rows)
+# create Gene by Pathway matrix (Genes are columns, Pathway are rows)
 Genes_Pathway_Matrix <- matrix(nrow = length(kegg), ncol = length(geod33272$ID$entrezID))
 colnames(Genes_Pathway_Matrix) <- geod33272$ID$entrezID
 rownames(Genes_Pathway_Matrix) <- names(kegg)
@@ -47,33 +47,55 @@ for (i in 1:length(kegg)){
 
 ```
 
-### Safe
-```{r, eval = FALSE}
-#log2 gene expression matrix
+### SAFE (Significance Analysis of Function and Expression) 
+
+Running SAFE: 
+```{r, eval = FALSE, message = FALSE}
+# log2 gene expression matrix
 gene_expression_matrix <- log2(geod33272$x)
 rownames(gene_expression_matrix) <- geod33272$ID$entrezID
-#activation status vector
+# activation status vector
 activation_status <- geod33272$status
 
-#Number of tests
+# Number of tests
 num_tests<- length(gene_expression_matrix[,1])
 #Target p value
 p <- 0.05/num_tests
-#Number of permutations needed for target p value
+# Number of permutations needed for target p value
 num_permutations <- 10*(1/p)
 
 diff_exp <- safe(X.mat = gene_expression_matrix, y.vec = activation_status, C.mat = t(Genes_Pathway_Matrix),  Pi.mat = num_permutations, error = "FWER.Bonf")
+```
 
-#top 10
+
+Top 10 results: 
+```{r}
+safe_dat <- load("Safe.Rdata")
+# top 10
 top10 <- safe.toptable(diff_exp,number = 10, pretty = TRUE, description = FALSE)
 print(top10)
+```
 
-#plot
+
+Visualize pathway "hsa03440 Homologous recombination":
+
+```{r}
+# plot
 safeplot(safe=diff_exp,  cat.name = "hsa03440 Homologous recombination")
+```
 
-#Takes forever to run safe, so just load the results instead of rerunning 
+
+```{r}
+# Takes forever to run safe, so just load the results instead of rerunning 
 save(gene_expression_matrix, activation_status, num_tests, p, num_permutations, diff_exp, top10, file = "Safe.Rdata")
 ```
 
 
-## Aggeratation Based Methods
+## 2. Aggeratation-Based Analysis
+
+### Load metabolomics data
+The dataset has already been preprocessed by quotient normalization and logged. Metabolites are in columns and samples are in rows of the `dat` data frame. Annotations of the metabolites can be found in annotations and information on gender is stored in variable gender, with 1 = male and 2 = female.
+```{r}
+data <- load("Simulated_metabolomics_data_preprocessed.Rdata")
+```
+
