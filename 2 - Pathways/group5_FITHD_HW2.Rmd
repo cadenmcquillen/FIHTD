@@ -147,7 +147,7 @@ ggplot(expvars_df_super,aes(expvars_super)) + geom_histogram(bins=5)
 print(paste("The average explained variance is",mean(expvars_super)))
 ```
 
-The super-pathways all have number of metabolites larger than 1 so there's no explained variance being 1. The average explained variance is a lot higher for sub-pathway analysis, because super-pathway is too broad and the expressions are all mixed up, making it difficult to analyze the difference.
+The super-pathways all have number of metabolites larger than 1 so there's no explained variance being 1. The average explained variance is a lot higher for sub-pathway analysis, because super-pathway is too broad and you have metabolites potentially being regulated in opposite directions which could mute the overall effect and make it difficult to analyze the difference.
 
 ### Pathway differences between males and females
 
