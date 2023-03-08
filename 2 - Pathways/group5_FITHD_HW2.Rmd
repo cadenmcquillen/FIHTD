@@ -10,9 +10,10 @@ output:
 
 ## Libraries
 ```{r message=FALSE}
-BiocManager::install("safe")
+# BiocManager::install("safe")
 library(tidyverse)
 library(safe)
+library(ggplot2)
 ```
 
 ## 1. Enrichment Analysis
@@ -96,6 +97,57 @@ save(gene_expression_matrix, activation_status, num_tests, p, num_permutations, 
 ### Load metabolomics data
 The dataset has already been preprocessed by quotient normalization and logged. Metabolites are in columns and samples are in rows of the `dat` data frame. Annotations of the metabolites can be found in annotations and information on gender is stored in variable gender, with 1 = male and 2 = female.
 ```{r}
-data <- load("Simulated_metabolomics_data_preprocessed.Rdata")
+data2 <- load("Simulated_metabolomics_data_preprocessed.Rdata")
 ```
+
+### Eigenmetabolites from PCA and explained variance for Sub_pathway
+```{r}
+zdat <- scale(dat) # scale dat to have mean=0 and sd=1 for each column (metabolites)
+unique_sub_pathways <- unique(annotations$Sub_pathway) # get all subpathways
+df_sub <- data.frame(matrix(nrow=length(gender),ncol=length(unique_sub_pathways))) # create empty data frame for pathway representatives
+colnames(df_sub) <- unique_sub_pathways # assign colnames as pathway names
+expvars_sub <- c()
+for (p in unique_sub_pathways) {
+  metab <- annotations[annotations$Sub_pathway==p,]$name # identify metabs that belong to pathway
+  use_zdat <- zdat[,metab] # get data of the metabs
+  pca <- prcomp(use_zdat) # perform pca
+  expvar <- (pca$sdev^2)/sum(pca$sdev^2)
+  expvars_sub <- c(expvars_sub, expvar[1])
+  df_sub[p] <- pca$x[,1] # add first pca coordinate as pathway representative to df
+}
+dim_sub <- dim(df_sub) # num samples, num variables
+print(paste("The number of samples is",dim_sub[1],"and the number of variables is",dim_sub[2]))
+
+expvars_df_sub <- data.frame(expvars_sub)
+ggplot(expvars_df_sub,aes(expvars_sub)) + geom_histogram(bins=10)
+print(paste("The average explained variance is",mean(expvars_sub)))
+```
+
+Some pathways have explained variance of 1 because there's only one metabolite in that pathway.
+
+### Eigenmetabolites from PCA and explained variance for Super_pathway
+```{r}
+unique_super_pathways <- unique(annotations$Super_pathway) # get all superpathways
+df_super <- data.frame(matrix(nrow=length(gender),ncol=length(unique_super_pathways))) # create empty data frame for pathway representatives
+colnames(df_super) <- unique_super_pathways # assign colnames as pathway names
+expvars_super <- c()
+for (p in unique_super_pathways) {
+  metab <- annotations[annotations$Super_pathway==p,]$name # identify metabs that belong to pathway
+  use_zdat <- zdat[,metab] # get data of the metabs
+  pca <- prcomp(use_zdat) # perform pca
+  expvar <- (pca$sdev^2)/sum(pca$sdev^2)
+  expvars_super <- c(expvars_super, expvar[1])
+  df_super[p] <- pca$x[,1] # add first pca coordinate as pathway representative to df
+}
+dim_super <- dim(df_super) # num samples, num variables
+print(paste("The number of samples is",dim_super[1],"and the number of variables is",dim_super[2]))
+
+expvars_df_super <- data.frame(expvars_super)
+ggplot(expvars_df_super,aes(expvars_super)) + geom_histogram(bins=5)
+print(paste("The average explained variance is",mean(expvars_super)))
+```
+
+The super-pathways all have number of metabolites larger than 1 so there's no explained variance being 1. The average explained variance is a lot higher for sub-pathway analysis, because super-pathway is too broad and the expressions are all mixed up, making it difficult to analyze the difference.
+
+### Pathway differences between males and females
 
