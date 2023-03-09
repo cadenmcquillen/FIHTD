@@ -234,7 +234,7 @@ ggplot(results2, aes(x=logFC, y=-log10(adj.P.Val))) +
 results$subpathway <- rownames(results) #add column for subpathways
 results$superpathway <- annotations$Super_pathway[match(results$subpathway, annotations$Sub_pathway)]
 results$plotcolor <- ifelse(results$logFC > 0, "Female", "Male") #color for enrichment
-ggplot(results, aes(x=-log10(adj.P.Val), y=subpathway, label=subpathway)) + 
+ggplot(results, aes(x=-log10(adj.P.Val), y=reorder(subpathway, logFC, decreasing = T), label=subpathway)) + 
   geom_point(stat='identity', aes(col =plotcolor), size=3 )  + facet_grid(rows = vars(superpathway), scales="free_y")+
   scale_color_manual(name="Log FC", 
                      labels = c("Female", "Male"), 
@@ -248,7 +248,7 @@ ggplot(results, aes(x=-log10(adj.P.Val), y=subpathway, label=subpathway)) +
 
 results2$superpathway <- rownames(results2) #add column for subpathways
 results2$plotcolor <- ifelse(results2$logFC > 0, "Female", "Male") #color for enrichment
-ggplot(results2, aes(x=-log10(adj.P.Val), y=superpathway, label=superpathway)) + 
+ggplot(results2, aes(x=-log10(adj.P.Val), y = reorder(superpathway, logFC, decreasing = T), label=superpathway)) + 
   geom_point(stat='identity', aes(col =plotcolor), size=3 )  +
   scale_color_manual(name="Log FC", 
                      labels = c("Female", "Male"), 
