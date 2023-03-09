@@ -185,7 +185,7 @@ design2 <- model.matrix(~gender, data=df_sub)
 
 
 ```{r}
-fit2 <- lmFit(t(df_super), design)
+fit2 <- lmFit(t(df_super), design2)
 ```
 
 
@@ -239,7 +239,7 @@ ggplot(results, aes(x=-log10(adj.P.Val), y=reorder(subpathway, logFC, decreasing
   scale_color_manual(name="Log FC", 
                      labels = c("Female", "Male"), 
                      values = c("Female" = "red", "Male"="blue")) + 
-  labs(title="Sub Pathways: Females vs Males", y = "Subpathways") + geom_vline(xintercept = 1.30102999566) 
+  labs(title="Sub Pathways", y = "Subpathways") + geom_vline(xintercept = 1.30102999566) 
 #add line for significance 
 
 ```
@@ -253,7 +253,7 @@ ggplot(results2, aes(x=-log10(adj.P.Val), y = reorder(superpathway, logFC, decre
   scale_color_manual(name="Log FC", 
                      labels = c("Female", "Male"), 
                      values = c("Female" = "red", "Male"="blue")) + 
-  labs(title="Super Pathways: Females vs Males", y = "Subpathways") + geom_vline(xintercept = 1.30102999566) #add line for significance 
+  labs(title="Super Pathways", y = "Subpathways") + geom_vline(xintercept = 1.30102999566) #add line for significance 
 
 ```
 
