@@ -22,6 +22,7 @@ library(ggplot2)
 ```{r}
 data <- load("geod33272.rda")
 ```
+
 ### KEGG pathways
 ```{r}
 num_kegg_pathways <- length(kegg)
@@ -60,12 +61,15 @@ activation_status <- geod33272$status
 
 # Number of tests
 num_tests<- length(gene_expression_matrix[,1])
-#Target p value
+# Target p value
 p <- 0.05/num_tests
 # Number of permutations needed for target p value
 num_permutations <- 10*(1/p)
 
 diff_exp <- safe(X.mat = gene_expression_matrix, y.vec = activation_status, C.mat = t(Genes_Pathway_Matrix),  Pi.mat = num_permutations, error = "FWER.Bonf")
+
+# Takes forever to run safe, so just load the results instead of rerunning 
+save(gene_expression_matrix, activation_status, num_tests, p, num_permutations, diff_exp, file = "Safe.Rdata")
 ```
 
 
@@ -85,11 +89,6 @@ Visualize pathway "hsa03440 Homologous recombination":
 safeplot(safe=diff_exp,  cat.name = "hsa03440 Homologous recombination")
 ```
 
-
-```{r}
-# Takes forever to run safe, so just load the results instead of rerunning 
-save(gene_expression_matrix, activation_status, num_tests, p, num_permutations, diff_exp, top10, file = "Safe.Rdata")
-```
 
 
 ## 2. Aggeratation-Based Analysis
@@ -149,5 +148,51 @@ print(paste("The average explained variance is",mean(expvars_super)))
 
 The super-pathways all have number of metabolites larger than 1 so there's no explained variance being 1. The average explained variance is a lot higher for sub-pathway analysis, because super-pathway is too broad and you have metabolites potentially being regulated in opposite directions which could mute the overall effect and make it difficult to analyze the difference.
 
+
 ### Pathway differences between males and females
+
+```{r message=FALSE}
+library(limma)
+```
+
+```{r}
+design <- model.matrix(~gender, data=df_sub)
+```
+
+
+```{r}
+fit <- lmFit(t(df_sub), design)
+```
+
+
+```{r}
+fit <- eBayes(fit)
+```
+
+If the coefficient estimate is positive, it means that the mean the value is higher in females compared to males, and vice versa if the estimate is negative.
+
+
+```{r}
+results <- topTable(fit, coef=2, adjust.method="fdr", sort.by="P", number=Inf)
+
+hist(results$logFC, breaks = 50)
+
+de_pathways <- rownames( subset(results, abs(logFC) > 1 & adj.P.Val < 0.05) )
+```
+
+
+
+```{r}
+ggplot(results, aes(x=logFC, y=-log10(adj.P.Val))) +
+  geom_point(aes(color=ifelse(abs(logFC) > 1 & adj.P.Val < 0.05, "red", "black")), size=1) +
+  theme_bw() +
+  scale_color_identity(guide="none") +
+  xlab("Log2 Fold Change") +
+  ylab("-Log10 Adjusted P-value") +
+  ggtitle("Volcano Plot of Differential Expression") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+
 
