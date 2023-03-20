@@ -129,6 +129,9 @@ sub_pathway_pcor_adj$estimate[sub_pathway_pcor_adj$p.adj > 0.05] <- 0
 sub_pathway_pcor_adj$estimate[diag(sub_pathway_pcor_adj$estimate)] <- 0
 
 
+#Convert correlations to all positive
+sub_pathway_pcor_adj$estimate <- abs(sub_pathway_pcor_adj$estimate)
+
 g <- simplify(graph.adjacency(sub_pathway_pcor_adj$estimate,mode="undirected",weighted=T,diag=F))
 
 plot.igraph(g,vertex.size=degree(g)+2,vertex.label=NA,edge.width=abs(E(g)$weight),layout=layout.auto(g))
