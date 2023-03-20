@@ -85,10 +85,54 @@ plot(hdn_graph, layout=layout_with_fr)
 
 
 ## 2. Pathway GGMs
-
+### Load data
 ```{r}
-data <- load("QMDiab_preprocessed_data_withggm.Rdata")
+load("QMDiab_preprocessed_data_withggm.RData")
 ```
 
+### Eigenmetabolites for subpathways and partial correlation 
+```{r}
+
+
+#eigenmetabolite for subpathways
+zdat <- scale(dat) # scale dat to have mean=0 and sd=1 for each column (metabolites)
+unique_sub_pathways <- na.omit(unique(annotations$SUB_PATHWAY)) # get all subpathways and remove NAs
+df_sub <- data.frame(matrix(nrow=length(T2D),ncol=length(unique_sub_pathways))) # create empty data frame for pathway representatives
+colnames(df_sub) <- unique_sub_pathways # assign colnames as pathway names
+expvars_sub <- c()
+for (p in unique_sub_pathways) {
+  metab <- annotations[which(annotations$SUB_PATHWAY==p), 2] # identify metabs that belong to pathway
+  use_zdat <- zdat[,colnames(zdat) %in% metab$BIOCHEMICAL] # get data of the metabs
+  pca <- prcomp(use_zdat) # perform pca
+  expvar <- (pca$sdev^2)/sum(pca$sdev^2)
+  expvars_sub <- c(expvars_sub, expvar[1])
+  df_sub[p] <- pca$x[,1] # add first pca coordinate as pathway representative to df
+}
+
+
+#Calculate partial correlations
+sub_pathway_pcor <- pcor(df_sub)
+
+
+#Multi testing correction
+alpha = 0.05 
+
+#copy DE dataframe 
+sub_pathway_pcor_adj <- sub_pathway_pcor
+#boneferroni
+num_pathways <- length(colnames(df_sub))
+num_test <- (((num_pathways *num_pathways )-num_pathways )/2)
+sub_pathway_pcor_adj$p.adj <- (sub_pathway_pcor_adj$p.value)*num_test
+
+#replace correlation matrix with 0s for not significant entries and along diagonal
+sub_pathway_pcor_adj$estimate[sub_pathway_pcor_adj$p.adj > 0.05] <- 0
+sub_pathway_pcor_adj$estimate[diag(sub_pathway_pcor_adj$estimate)] <- 0
+
+
+g <- simplify(graph.adjacency(sub_pathway_pcor_adj$estimate,mode="undirected",weighted=T,diag=F))
+
+plot.igraph(g,vertex.size=degree(g)+2,vertex.label=NA,edge.width=abs(E(g)$weight),layout=layout.auto(g))
+
+```
 
 ## 3. Phenotype-driven module identification
