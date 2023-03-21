@@ -49,7 +49,6 @@ diseasome_mat <- sparseMatrix(
                       dimnames=list(unique(diseasome[,1]), unique(diseasome[,2])))
 
 diseasome_matrix <- as.matrix(diseasome_mat)
-
 dim(diseasome_matrix)
 ```
 
@@ -58,7 +57,7 @@ dim(diseasome_matrix)
 Generate the Human Disease Network (HDN, Figure 1 in Goh et al.) by multiplying the matrix with its own transpose, see lecture. What are the dimensions of the HDN matrix? What are the numeric values in the matrix?
 
 ```{r}
-hdn <- t(diseasome_mat) %*% diseasome_mat
+hdn <-  diseasome_mat %*% t(diseasome_mat)
 hdn_matrix <- as.matrix(hdn)
 dim(hdn)
 ```
@@ -83,10 +82,8 @@ E(hdn_graph)$color <- rgb(0,0,0,alpha=0.5*E(hdn_graph)$weight/max(E(hdn_graph)$w
 
 ```{r}
 # Plot the graph
-# plot.igraph(hdn_graph,vertex.size=degree(hdn_graph),vertex.label=NA,edge.width=abs(E(hdn_graph)$weight),layout=layout.auto(hdn_graph))
+plot.igraph(hdn_graph,vertex.size=degree(hdn_graph),vertex.label=NA,edge.width=abs(E(hdn_graph)$weight),layout=layout.auto(hdn_graph))
 ```
-*The graph is temporarily disabled because it takes too long to knit and it's a bit off*
-
 
 
 ## 2. Pathway GGMs
