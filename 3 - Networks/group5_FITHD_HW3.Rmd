@@ -47,7 +47,8 @@ diseasome_mat <- sparseMatrix(
                       i=diseasome[,1], j=diseasome[,2], # disease indices & gene indices
                       dims=c(max(diseasome[,1]), max(diseasome[,2])),
                       dimnames=list(unique(diseasome[,1]), unique(diseasome[,2])))
-
+colnames(diseasome_mat) <- genes_names$Gene.symbols 
+rownames(diseasome_mat) <- diseases_names$Disorder.name
 diseasome_matrix <- as.matrix(diseasome_mat)
 dim(diseasome_matrix)
 ```
@@ -59,6 +60,8 @@ Generate the Human Disease Network (HDN, Figure 1 in Goh et al.) by multiplying 
 ```{r}
 hdn <-  diseasome_mat %*% t(diseasome_mat)
 hdn_matrix <- as.matrix(hdn)
+colnames(hdn_matrix) <- diseases_names$Disorder.name
+rownames(hdn_matrix) <- diseases_names$Disorder.name
 dim(hdn)
 ```
 
@@ -83,6 +86,35 @@ E(hdn_graph)$color <- rgb(0,0,0,alpha=0.5*E(hdn_graph)$weight/max(E(hdn_graph)$w
 ```{r}
 # Plot the graph
 plot.igraph(hdn_graph,vertex.size=degree(hdn_graph),vertex.label=NA,edge.width=abs(E(hdn_graph)$weight),layout=layout.auto(hdn_graph))
+```
+### Basal cell carcinoma Subnetwork
+```{r}
+#get index of bcc
+bcc_index <- which(diseases_names$Disorder.name == "Basal cell carcinoma (3)")
+#get edges of HDN for bcc
+bcc_edges <- which(hdn_matrix[,bcc_index] == 1)
+
+bcc_matrix <- hdn_matrix[bcc_edges, bcc_edges]
+
+
+# Create a graph object from the bcc matrix
+bcc_graph <- graph.adjacency(bcc_matrix,weighted=TRUE,mode="upper",diag=F)
+
+
+# Set vertex labels to disease names
+V(bcc_graph)$label <- V(bcc_graph)$name
+
+# Set vertex size based on degree
+V(bcc_graph)$size <- degree(bcc_graph)
+
+# Set edge color based on weight
+E(bcc_graph)$color <- rgb(0,0,0,alpha=0.5*E(bcc_graph)$weight/max(E(bcc_graph)$weight))
+```
+
+```{r}
+# Plot the graph
+plot.igraph(bcc_graph,vertex.size=degree(bcc_graph),vertex.label=V(bcc_graph)$label,edge.width=abs(E(bcc_graph)$weight),layout=layout.auto(bcc_graph))
+
 ```
 
 
