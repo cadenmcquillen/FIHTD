@@ -12,6 +12,9 @@ output:
 ```{r message=FALSE}
 library(tidyverse)
 library(ggplot2)
+library(Matrix)
+library(igraph)
+library(ppcor)
 ```
 
 ## 1. The human diseasome
@@ -19,7 +22,7 @@ library(ggplot2)
 ### 1.1 Load expression data
 ```{r}
 data <- load("Diseasome_preprocessed.Rdata")
-diseasome
+head(diseasome)
 ```
 
 The data frame `diseasome` is the Human Diseasome in __edge list__ format (the first two columns are indices into the disease and gene list, respectively). How many diseases and genes are in the Diseasome? How many edges do you see?
@@ -64,10 +67,9 @@ dim(hdn)
 In addition, show a detailed subnetwork of your choice.
 
 ```{r}
-library(igraph)
-
 # Create a graph object from the HDN matrix
-hdn_graph <- graph.adjacency(hdn_matrix, weighted=TRUE, mode="upper")
+hdn_graph <- graph.adjacency(hdn_matrix,weighted=TRUE,mode="upper",diag=F)
+hdn_graph <- delete.vertices(hdn_graph,degree(hdn_graph)==0)
 
 # Set vertex labels to disease names
 V(hdn_graph)$label <- V(hdn_graph)$name
@@ -77,10 +79,13 @@ V(hdn_graph)$size <- degree(hdn_graph)
 
 # Set edge color based on weight
 E(hdn_graph)$color <- rgb(0,0,0,alpha=0.5*E(hdn_graph)$weight/max(E(hdn_graph)$weight))
-
-# Plot the graph
-plot(hdn_graph, layout=layout_with_fr)
 ```
+
+```{r}
+# Plot the graph
+# plot.igraph(hdn_graph,vertex.size=degree(hdn_graph),vertex.label=NA,edge.width=abs(E(hdn_graph)$weight),layout=layout.auto(hdn_graph))
+```
+*The graph is temporarily disabled because it takes too long to knit and it's a bit off*
 
 
 
@@ -92,8 +97,6 @@ load("QMDiab_preprocessed_data_withggm.RData")
 
 ### Eigenmetabolites for subpathways and partial correlation 
 ```{r}
-
-
 #eigenmetabolite for subpathways
 zdat <- scale(dat) # scale dat to have mean=0 and sd=1 for each column (metabolites)
 unique_sub_pathways <- na.omit(unique(annotations$SUB_PATHWAY)) # get all subpathways and remove NAs
@@ -139,3 +142,84 @@ plot.igraph(g,vertex.size=degree(g)+2,vertex.label=NA,edge.width=abs(E(g)$weight
 ```
 
 ## 3. Phenotype-driven module identification
+
+### Reload dataset
+```{r}
+load("QMDiab_preprocessed_data_withggm.RData")
+```
+
+### Perform t-test
+```{r}
+t2d <- which(T2D==1)
+nt2d <- which(T2D==0)
+t2d_metab <- dat[t2d,]
+nt2d_metab <- dat[nt2d,]
+
+pvals <- c()
+metab <- c()
+idx <- c()
+
+for (i in 1:length(colnames(dat))) {
+  t2d_samp <- t2d_metab[,i] # t2d samples
+  nt2d_samp <- nt2d_metab[,i] # non-t2d samples
+  temp <- t.test(t2d_samp,nt2d_samp)
+  pvals[i] <- temp$p.value
+  metab[i] <- colnames(dat)[i]
+  idx[i] <- i
+}
+```
+
+### Multiple testing correction
+```{r}
+de <- data.frame(idx,metab,pvals)
+names(de) <- c('index','metab','pvalue')
+de$p.adj <- p.adjust(de$pvalue,method="fdr")
+head(de)
+```
+
+### Module identification
+```{r}
+# identify all neighbor nodes
+# get ids
+neighbor_ids <- which(ggm[,345]>0)
+neighbor_ids
+# get ggm vals
+neighbor_nodes <- ggm[neighbor_ids,345]
+neighbor_nodes
+# get names
+neighbor_nodes_names <- names(neighbor_nodes)
+neighbor_nodes_names
+```
+### Scale data and find best module
+```{r}
+zdat <- scale(dat)
+t2d_zmetab <- zdat[t2d,]
+nt2d_zmetab <- zdat[nt2d,]
+module_pvals <- c()
+module_names <- c()
+module_id <- c()
+module_val <- c()
+for (i in 1:length(neighbor_nodes_names)) {
+  zsamp_id <- neighbor_ids[i]
+  if (zsamp_id != 345) {
+    zsamp_val <- neighbor_nodes[i]
+    t2d_zsamp <- t2d_zmetab[,zsamp_id]
+    nt2d_zsamp <- nt2d_zmetab[,zsamp_id]
+    temp <- t.test(t2d_zsamp,nt2d_zsamp)
+    module_pvals[i] <- temp$p.value
+    module_names[i] <- neighbor_nodes_names[i]
+    module_id[i] <- zsamp_id
+    module_val[i] <- zsamp_val
+  }
+}
+```
+
+```{r}
+module_de <- data.frame(module_id,module_val,module_pvals,module_names)
+names(module_de) <- c('module_id','module_ggm_val','module_pvalue','module_name')
+module_de <- na.omit(module_de)
+module_de
+
+added <- module_de$module_name[module_de$module_pvalue==min(module_de$module_pvalue)]
+cat("neighbor added to the module should be",added)
+```
