@@ -141,6 +141,55 @@ plot.igraph(g,vertex.size=degree(g)+2,vertex.label=NA,edge.width=abs(E(g)$weight
 
 ```
 
+### Eigenmetabolites for superpathways and partial correlation 
+```{r}
+#eigenmetabolite for subpathways
+zdat <- scale(dat) # scale dat to have mean=0 and sd=1 for each column (metabolites)
+unique_super_pathways <- na.omit(unique(annotations$SUPER_PATHWAY)) # get all superpathways and remove NAs
+df_super <- data.frame(matrix(nrow=length(T2D),ncol=length(unique_super_pathways))) # create empty data frame for pathway representatives
+colnames(df_super) <- unique_super_pathways # assign colnames as pathway names
+expvars_super <- c()
+for (p in unique_super_pathways) {
+  metab <- annotations[which(annotations$SUPER_PATHWAY==p), 2] # identify metabs that belong to pathway
+  use_zdat <- zdat[,colnames(zdat) %in% metab$BIOCHEMICAL] # get data of the metabs
+  pca <- prcomp(use_zdat) # perform pca
+  expvar <- (pca$sdev^2)/sum(pca$sdev^2)
+  expvars_super <- c(expvars_super, expvar[1])
+  df_super[p] <- pca$x[,1] # add first pca coordinate as pathway representative to df
+}
+
+
+#Calculate partial correlations
+super_pathway_pcor <- pcor(df_super)
+
+
+#Multi testing correction
+alpha = 0.05 
+
+#copy DE dataframe 
+super_pathway_pcor_adj <- super_pathway_pcor
+#boneferroni
+num_pathways <- length(colnames(df_super))
+num_test <- (((num_pathways *num_pathways )-num_pathways )/2)
+super_pathway_pcor_adj$p.adj <- (super_pathway_pcor_adj$p.value)*num_test
+
+#replace correlation matrix with 0s for not significant entries and along diagonal
+super_pathway_pcor_adj$estimate[super_pathway_pcor_adj$p.adj > 0.05] <- 0
+super_pathway_pcor_adj$estimate[diag(super_pathway_pcor_adj$estimate)] <- 0
+
+
+#Convert correlations to all positive
+super_pathway_pcor_adj$estimate <- abs(super_pathway_pcor_adj$estimate)
+
+g <- simplify(graph.adjacency(super_pathway_pcor_adj$estimate,mode="undirected",weighted=T,diag=F))
+
+plot.igraph(g,vertex.size=degree(g)+2,vertex.label=NA,edge.width=abs(E(g)$weight),layout=layout.auto(g))
+
+```
+
+### Difference between our method and paper's method
+In the paper a link is drawn between two super pathway's if there is at least 1 link between any two subpathways in each respective group. In our method we get the eigenmetabolite representative of each superpathway and then get the partial correlations between every super pathway where a link is drawn if there is statistically significant correlation between any two superpathways. 
+
 ## 3. Phenotype-driven module identification
 
 ### Reload dataset
@@ -189,6 +238,14 @@ neighbor_nodes
 # get names
 neighbor_nodes_names <- names(neighbor_nodes)
 neighbor_nodes_names
+
+#get T2D pvalues for every neighbor
+neighbor_pvalues <- de[which(de$metab %in% neighbor_nodes_names),]
+neighbor_pvalues
+
+#get T2D pvalue for seed
+seed_pvalue <- de[which(de$index == 345),]
+seed_pvalue
 ```
 ### Scale data and find best module
 ```{r}
